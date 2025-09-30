@@ -1,3 +1,5 @@
+# templates/deployment.yaml
+
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -33,15 +35,29 @@ spec:
               value: {{ .Values.vault.address | quote }}
             - name: KV_MOUNT_PATH
               value: {{ .Values.vault.kvMountPath | quote }}
-            - name: VAULT_TOKEN
-              valueFrom:
-                secretKeyRef:
-                  name: {{ .Values.vault.existingSecretName }}
-                  key: token
-            # Conditionally add the VAULT_NAMESPACE environment variable
             {{- if .Values.vault.namespace }}
             - name: VAULT_NAMESPACE
               value: {{ .Values.vault.namespace | quote }}
+            {{- end }}
+
+            # --- NEW: Conditional Authentication ENVs ---
+            {{- if eq .Values.auth.method "token" }}
+            - name: VAULT_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.auth.token.existingSecretName }}
+                  key: token
+            {{- else if eq .Values.auth.method "approle" }}
+            - name: VAULT_ROLE_ID
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.auth.approle.existingSecretName }}
+                  key: role_id
+            - name: VAULT_SECRET_ID
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.auth.approle.existingSecretName }}
+                  key: secret_id
             {{- end }}
           livenessProbe:
             httpGet:
