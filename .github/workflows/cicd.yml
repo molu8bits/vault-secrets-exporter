@@ -1,3 +1,5 @@
+# .github/workflows/cicd.yml
+
 name: CI & Release
 
 on:
@@ -9,7 +11,8 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}
+  CONTAINER_IMAGE_NAME: ${{ github.repository }}
+  HELM_CHART_REPOSITORY_NAME: vault-secrets-exporter-helm
 
 jobs:
   build_and_validate:
@@ -37,7 +40,7 @@ jobs:
         with:
           context: .
           push: false
-          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:test
+          tags: ${{ env.REGISTRY }}/${{ env.CONTAINER_IMAGE_NAME }}:test
 
       - name: Set up Helm
         uses: azure/setup-helm@v4
@@ -76,7 +79,6 @@ jobs:
 
       - name: Compile release binaries
         run: |
-          # The binary name will be vault-secrets-exporter-linux-amd64, etc.
           GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }} go build -v -o "vault-secrets-exporter-${{ matrix.goos }}-${{ matrix.goarch }}" ./cmd/exporter
 
       - name: Upload Binaries to Release
@@ -98,7 +100,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          images: ${{ env.REGISTRY }}/${{ env.CONTAINER_IMAGE_NAME }}
           tags: |
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
@@ -117,13 +119,13 @@ jobs:
         with:
           version: 'v3.13.2'
       
+      - name: Prepare Helm OCI repository path
+        run: echo "OWNER_LOWERCASE=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
+
       - name: Package and Push Helm chart to GHCR
         run: |
-          # Get the version from the Git tag (e.g., v1.2.3 -> 1.2.3)
           CHART_VERSION=$(echo "${{ github.ref_name }}" | sed 's/v//')
-          
-          # Update the chart version to match the release tag
           helm package ./charts/vault-secrets-exporter --version "$CHART_VERSION" --app-version "$CHART_VERSION"
           
-          # Push the chart as an OCI artifact
-          helm push vault-secrets-exporter-"$CHART_VERSION".tgz oci://${{ env.REGISTRY }}/${{ toLower(github.repository_owner) }}
+          # The chart will be available at oci://${{ env.REGISTRY }}/OWNER/vault-secrets-exporter-helm
+          helm push vault-secrets-exporter-"$CHART_VERSION".tgz oci://${{ env.REGISTRY }}/${{ env.OWNER_LOWERCASE }}/${{ env.HELM_CHART_REPOSITORY_NAME }}
