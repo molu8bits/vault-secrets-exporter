@@ -126,4 +126,4 @@ jobs:
           helm package ./charts/vault-secrets-exporter --version "$CHART_VERSION" --app-version "$CHART_VERSION"
           
           # Push the chart as an OCI artifact
-          helm push vault-secrets-exporter-"$CHART_VERSION".tgz oci://${{ env.REGISTRY }}/${{ github.repository_owner | lower }}
+          helm push vault-secrets-exporter-"$CHART_VERSION".tgz oci://${{ env.REGISTRY }}/${{ toLower(github.repository_owner) }}
