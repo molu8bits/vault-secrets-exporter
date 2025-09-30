@@ -121,6 +121,7 @@ jobs:
       
       - name: Prepare Helm OCI repository path
         run: echo "OWNER_LOWERCASE=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
+        shell: bash
 
       - name: Package and Push Helm chart to GHCR
         run: |
